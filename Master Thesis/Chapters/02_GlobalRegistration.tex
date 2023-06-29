@@ -1,0 +1,112 @@
+\chapter{Point Clouds Registration}
+Once our point cloud is acquired through the robot's autonomy services such as GraphNav or using a SLAM algorithm, the one collected is not necessarily aligned with the reference point cloud obtained from the BIM file or past missions.\\
+
+Indeed, those point clouds can be displayed in different reference frames depending on the exact initial localization and direction of the robot or on the coordinate system used in the BIM file. Thus, alignment of point clouds is important, as otherwise, we wouldn't be comparing the exact same space location.\\
+
+This chapter explores widespread solutions to register point clouds. It begins by giving a formal definition of the point clouds registration problem followed by an introduction to 2 algorithms to perform the denoted task:
+\begin{itemize}
+    \item A random sample Consensus (RANSAC) algorithm which quickly identifies a good estimate.
+    \item An Iterative Closest Point (ICP) algorithm which refines the result obtained by the initial estimate.
+\end{itemize}
+
+\section{Definition of the registration problem}
+Given a source point cloud $X := \{ x_1,x_2,...x_n\}$ and a target point cloud $Y = \{y_1,y_2,...,y_m\}$, the problem of point clouds registration, also known as the transformation estimation problem, is formally equivalent to determine the rigid transformation matrix $T^*$ between 2 point clouds $X$ and $Y$ such that \cite{Registration_review}:
+\begin{equation}
+    T^* = \argmin_T \; \text{dist}(T(X), Y) 
+\end{equation}
+
+More explicitly, the distance between two point clouds denoted as $\text{dist}(T(X), Y)$, is based on the sum of the distance between correspondent points in $X$ and $Y$. These correspondences are defined by a correspondence set $(i,j) \in K$.\\
+
+The distance metric used is the Euclidean distance since the robot's frames are described with a 3D orthonormal basis. 
+Therefore, given two corresponding points, $x_i \in X$, $y_j \in Y$ and a transformation matrix $T$, the distance is computed as follow:
+\begin{equation}
+    \text{dist}(T(x_i),y_j) =\| y_j - T(x_i) \|_2^2
+\end{equation}
+Moreover, based on the definition of the transformation between two frames, as defined in Equation \ref{eq:TransfoMatrix}, $T(x_i) = Rx_i + t$. We can give an explicit definition of the problem:
+\begin{equation}
+    R^*,t^* = \argmin_{R,t} \; \sum_{(i,j) \in K} \| y_j - Rx_i - t\|_2^2
+\end{equation}
+
+The registration problem can also be viewed as a chicken and egg problem: In order to find the transformation matrix, we need to have the correspondence set. And to have the correspondence set, we need the transformation matrix.\\
+
+In the following section, we will cover a technique that breaks this circular problem by initially estimating the transformation matrix.
+\section{Random Sample Consensus (RANSAC)}
+The first technique employed is called RANdom SAmple Consensus (RANSAC) \cite{ransac_registration}.\\
+RANSAC is an iterative method where in each iteration, the method derives a hypothetical transformation $\hat{T}$ using  3 pairs of points: $x_1,x_2,x_3 \in X$ from the source point cloud and $y_1, y_2, y_3 \in Y$ from the target one.\\
+
+Then, the method evaluates the consistency of the registration with respect to the derived transformation $\hat{T}$. This evaluation is performed using a criterion, such as the distance to the nearest neighbor in the opposite point cloud, allowing the identification of inliers and outliers.\\
+
+The method finally returns the transformation $T^*$ with the largest number of inliers, indicating the best registration.
+
+\begin{algorithm}[H]
+\caption{RANSAC (Global Registration)}\label{alg:RANSAC_globReg}
+\begin{description}[leftmargin=!, labelwidth=\widthof{\textbf{Step1: }}]
+    \item [Step 1:] Let $X$ be the source point cloud and $Y$ be the target point cloud.
+    \item [Step 2:] Select a random subset of 3 points $X' \subset X$ and 3 points $Y' \subset Y$
+    \item [Step 3:] Compute the candidate transformation matrix $\hat{{T}}$ between $X'$ and $Y'$ and apply it to $X$.
+    \item [Step 4:] For all $x \in X$, determine if it is an inlier or an outlier based on a criterion.
+    \item [Step 5:] Repeat \textbf{Step2 - Step 4} a pre-determined number of iteration. Return the transformation $T^*$ with the largest amount of inliers.
+\end{description}
+\end{algorithm}
+This method offers a significant advantage for point cloud registration since it proves itself to be robust and reliable against outliers such as measurement noise commonly encountered in LiDAR-based method.\\
+Furthermore, this method is characterized as a global method since it allows estimation of transformation without requiring any prior assumption about the proximity of the source and target frames. This attribute is particularly valuable as it allows for flexibility in registering point clouds that may have significant geometric differences or misalignments.\\
+
+\section{RANSAC: Improvements \label{sec:RANSAC_improvements}}
+However, RANSAC suffers from certain limitations which can be addressed. One drawback is that the method treats all correspondences equally and computes the transformation even for false matches.\\
+To tackle these limitations, different approaches can be employed as outlined bellow:
+\begin{itemize}
+    \item In \textbf{step 2} of algorithm \ref{alg:RANSAC_globReg}, a variation can be made. When choosing random points $X' \in X$, their corresponding points $Y' \in Y$ are selected based on a nearest neighbor search in 33-dimensional feature space \cite{33FPFH}. 
+    \item A pruning step can be implemented to reject quickly false matches. Various criteria, such as the proximity of correspondent points $X'$ and $Y'$ or the alignment of their normals, are utilized to identify and discard inaccurate correspondences\cite{RANSAC_pruning}\cite{Open3D}. 
+\end{itemize}
+
+
+\section{Iterative Closest Point (ICP)}
+
+As discussed earlier, the registration problem presents a chicken and egg dilemma since the search for a transformation matrix prerequisite points correspondences and conversely. Fortunately, RANSAC provides a good initial guess of the transformation matrix offering a starting point to address this circular problem.\\
+
+The Iterative Closest Point (ICP) takes advantage of this starting point in order to further refine the registration outcome. This algorithm operates in a loop of two steps: finding correspondences between the point clouds $X$ and $Y$, followed by refining the transformation matrix $T$. By iteratively establishing correspondences and refining the transformation matrix, ICP ultimately achieves a more accurate registration result. The algorithm converges locally to a minimum of the distance function $\text{dist}(T(X), Y)$ and stops when the function value falls below a predetermined threshold \cite{ICP}.\\
+
+The pseudocode for the ICP algorithm is presented in Algorithm \ref{alg:ICP}. Steps 2 and 3 of the algorithm involve finding correspondences and determining the transformation matrix, respectively.\\
+
+Assuming an initial matrix $\hat{T}$ is available, finding the correspondent point $y_j \in Y$ based on $x_i \in X$ is simply a 1-nearest neighbor problem. Since a point cloud can contain up to millions of points, the implementation of \textbf{Step 2} involves the construction of a kd-tree structure to rapidly find an approximate nearest neighbor \cite{kdtree}.\\
+
+The minimization problem in \textbf{Step 3} is often solved in two steps. The first translates the source point cloud so that the center of masses of both point clouds are aligned. Then the second step computes the rotation that aligns them using singular value decomposition (SVD) \cite{ICP}.
+
+
+\begin{algorithm}[h]
+\caption{Iterative Closest Point (ICP)}\label{alg:ICP}
+\begin{description}[leftmargin=!, labelwidth=\widthof{\textbf{Step1: }}]
+    \item [Step 1] Let $R \in \mathbb{R}^{3\times 3}$ be a rotation matrix and $t \in \mathbb{R}^3$ be a translation vector. Let $X$ be the source point cloud and $Y$ be the target point cloud.
+    \item [Step 2] For all $x_i \in X$, find the corresponding $y_j$ such that:
+        \[
+            y_j \gets \argmin_{y \in Y} \| y - R x_i - t\|_2^2
+        \]
+    \item [Step 3] Find $R,tr$ such that:
+        \[
+            R,t \gets \argmin_{R,t} \sum_{x_i \in X} \|y_j - R x_i - t\|_2^2
+        \]
+    \item [Step 4] If $\sum_{x_i \in X} \| y_j - R x_i - t\|_2^2$ is lower than a threshold \textit{trsh}, then stop. Otherwise, return to step 2. 
+\end{description}
+\end{algorithm}
+\section{ICP: Improvements \label{sec:ICP_improvements}}
+Point clouds captured in construction sites often contain walls and buildings consisting of planar surfaces. An idea to improve the ICP algorithm is to align those points with the underlying surface they represent, rather than establishing point correspondences \cite{CyrillYoutube} \cite{ICP-point-to-plane}.\\
+The point-to-plane ICP addresses this concern by disregarding error of between 2 corresponding points, $x_i \in X, y_j \in Y$, if they are aligned to the same plane. To achieve this, the algorithm computes approximate normals $n_i$ for each point $y_j$ and applies a scalar product between the normal and the vector $y_j - T(x_i)$.
+
+\begin{algorithm}[H]
+\caption{ICP Point-to-plane}\label{alg:ICP_Point_to_Plane}
+\begin{description}[leftmargin=!, labelwidth=\widthof{\textbf{Step1: }}]
+    \item [Step 1] Let $R \in \mathbb{R}^{3\times 3}$ be a rotation matrix and $t \in \mathbb{R}^3$ be a translation vector. Let $X$ be the source point cloud and $Y$ be the target point cloud. $n$ is the estimated normal for each point $y \in Y$
+    \item [Step 2] For all $x_i \in X$, find the corresponding $y_j$ such that:
+        \[
+            y_j \gets \argmin_{y \in Y} \| y - R x_i - t\|_2^2
+        \]
+    \item [Step 3] Find $R,t$ such that:
+        \[
+            R,t \gets \argmin_{R,t} \sum_{x_i \in X} \big(n_i \cdot \left(y_j - R x_i - t\right)\big)^2
+        \]
+    \item [Step 4] If $\sum_{x_i \in X} \| y_j - R x_i - t\|_2^2$ is lower than a threshold \textit{trsh}, then stop. Otherwise, return to step 2. 
+\end{description}
+\end{algorithm}
+% Purpose of ICP
+% ICP classical version
+% ICP with normals

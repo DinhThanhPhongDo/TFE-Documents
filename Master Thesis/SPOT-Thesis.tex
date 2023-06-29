@@ -1,0 +1,76 @@
+% EPL master thesis covers template
+\documentclass{EPL-master-thesis-covers-EN}
+
+\linespread{1.25}
+% Please fill in the following boxes
+% Title of the thesis
+\title{3D change detection to monitor construction sites}
+
+% Subtitle - remove this line if not applicable
+%\subtitle{Optional subtitle}
+
+% Name of the student author(s)
+\author{Dinh Thanh Phong \textsc{Do}}
+\secondauthor{Nicolas \textsc{Jadoul}}			
+
+% Official title of the master's degree (copy/paste from the list below)
+% Master [120] in Data Sciences Engineering
+% Master [120] in Data Science: Information technology
+% Master [120] in Mathematical Engineering
+
+\degreetitle{Master [120] in Mathematical / Data Science Engineering}
+
+% Name of the supervisor(s)
+\supervisor{Pierre  \textsc{Schaus}}
+
+% Name of the reader(s)
+\readerone{Achille \textsc{Morenville}}
+\readertwo{Timothée \textsc{Lonfils}}				% remove if not applicable
+
+% Academic year (update if necessary)
+\years{2022--2023}
+
+% Document
+\begin{document}
+    % Front cover page
+    \maketitle
+    \pagenumbering{roman}
+    \include{Chapters/00_Abstract}
+    
+    
+    \include{Chapters/00_Acknowledgements}
+    \tableofcontents
+    %\listoffigures
+    %\listoftables
+    
+    % 1. SPOT, LiDAR, SLAM problem, BIM
+    \include{Chapters/01_SPOT}
+
+    % 2. Global Registration: RANSAC & ICP
+    \include{Chapters/02_GlobalRegistration}
+    
+    % 3. Plane detection
+    \include{Chapters/03_PlaneDetection}
+    
+    % 4. Change detection
+    \include{Chapters/04_ChangeDetection}
+
+    % 5. Deep learning methods for change detection
+    \include{Chapters/05_DL}
+
+    % 6. Implementations & Results
+    \include{Chapters/06_Results}
+
+    % 7. Conclusion & Futur improvements    
+    \include{Chapters/07_Conclusion}
+
+    % Bibliography
+    \interlinepenalty=10000
+    \bibliographystyle{ieeetr}
+    \bibliography{biblio}
+    \appendix 
+    \include{Chapters/ApendixA}
+    % Back cover page
+    \backcoverpage
+
+\end{document}

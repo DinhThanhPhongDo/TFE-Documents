@@ -1,0 +1,58 @@
+\chapter{Planes Matching and Changes Detection}
+
+In the previous chapters, two essential tasks were addressed: point cloud registration and the detection of planar structures. Those steps play crucial roles in change detection.\\
+
+To achieve our main objective of detecting changes in significant structures between two point clouds, two additional steps need to be undertaken. Firstly, after identifying planar structures in both point clouds, our aim is to establish correspondences between the detected planes. Subsequently, once the matching of corresponding planes is performed, the next step involves classifying the specific changes that have occurred between the two point clouds.\\
+
+The purpose of this chapter is to address these two remaining steps: finding correspondences and finding transformations between 2 planes such as translation, rotation, or no change. For this purpose, a plane-matching algorithm and a transformation classification technique are proposed.
+
+\section{Plane Matching}
+In practice, in the scenario where there is a difference between theoretical and built planes such as walls, those differences are typically not too gross and are not always qualitatively visible. This observation allows us to make an assumption that aligns with reality while remaining not too restrictive. The assumption implies the following considerations:
+\begin{itemize}
+    \item \textbf{Translation Transformation:} If a translation transform exists between two planes, the magnitude of this translation should not exceed a threshold of around a few dozen of centimeters. This involves the distance between their centroid remaining within the predetermined threshold.
+    \item \textbf{Rotation Transformation: } If a rotation transformation exists between two planes, the magnitude of this rotation should not exceed a threshold around a dozen of degrees. Thus, their normal vectors should remain aligned within a predetermined limit.
+\end{itemize}
+
+Based on these assumptions, and inspired by a similar approach \cite{planematching}, we propose a point cloud plane matching algorithm (Algorithm \ref{alg:Plane_Matching}). This algorithm pre-selects pairs of planes where their centroids are below a threshold and matches the pair where their normals are the most aligned.\\
+
+\begin{algorithm}[ht]
+\caption{Plane Matching}\label{alg:Plane_Matching}
+\begin{description}[leftmargin=!, labelwidth=\widthof{\textbf{Step1: }}]
+    \item [Step 1:] Let $\Pi_X^i$ and $\Pi_Y^j$ be planes of source and target point clouds $X,Y$. We denote $n_X^i$, $n_Y^j$ as their respective normal vector and $c_X^i$, $c_Y^j$ as their respective centroids.
+    \item [Step 2:] For all tuple $(i,j)$, compute: the distance between planes $d(i,j) $ and the alignment $a(i,j)$.
+    \begin{align*}
+        d(i,j) &:= \| c_X^i - c_Y^j \| \\
+        a(i,j) &:= \langle n_X^i, n_Y^j\rangle
+    \end{align*}
+    \item [Step 3:] For each $i$, find $j^*$ such that:
+        \begin{align*}
+            j^*(i) &= \argmin_j a(i,j) \; \; \; \texttt{Subject to:}\; \; \; d(i,j) \leq trsh_d
+        \end{align*}
+    \item [Step 4:] For each $i$, match the corresponding plane together $(\Pi_X^i, \Pi_Y^{j^*(i)})$
+\end{description}
+\end{algorithm}
+
+\section{Change Detection}
+
+Once the plane matching is completed, we can classify the nature of the transformation between two planar surfaces, specifically determining if there is a translation, rotation, or no transformation present. Since the plane equations along with the normals and centroids are available, that information can be employed to make the classification as described in the proposed Algorithm \ref{alg:Transf_Class}.\\
+
+To identify a translation, we compare the distance between centroids on the surfaces. If the distance exceeds a minimum threshold value, it indicates a translation between the planes. On the other hand, to detect a rotation, we analyze the alignment of the normals. If the scalar product of the normal vectors falls below a certain threshold, it suggests a rotational transformation. If neither a significant translation nor rotation is observed, both planes are classified as having no transformation.\\
+
+\begin{algorithm}[ht]
+\caption{Transformation Classification}\label{alg:Transf_Class}
+\begin{description}[leftmargin=!, labelwidth=\widthof{\textbf{Step1: }}]
+    \item [Step 1:] Let $\Pi_X^i$ and $\Pi_Y^j$ be a pair of correspondent planes of source and target point clouds $X, Y$. We denote $n_X^i$, $n_Y^j$ as their respective normal vector and $c_X^i$, $c_Y^j$ as their respective centroids.
+    \item [Step 2:] For all correspondent tuple $(i,j)$, compute the distance between planes $d(i,j) $ and the alignment $a(i,j)$.
+    \begin{align*}
+        d(i,j) &:= \| c_X^i - c_Y^j \| \\
+        a(i,j) &:= \langle n_X^i, n_Y^j\rangle
+    \end{align*}
+    \item [Step 3:] Classify the transform as follow:
+    \begin{itemize}
+        \item If $d(i,j) \geq trsh_d$ and $a(i,j) \geq trsh_n$: A translation is applied to $\Pi_Y^j$ compared to $\Pi_X^i$.
+        \item If $d(i,j) \geq trsh_d$ and $a(i,j) < trsh_n$: no transform is applied to $\Pi_Y^j$.
+        \item Otherwise, a rotation is applied to $\Pi_Y^j$ compared to $\Pi_X^i$.
+    \end{itemize}
+\end{description}
+\end{algorithm}
+However, it is important to note that this approach has limitations. It is only capable of classifying the transformation into three distinct classes: translation, rotation, or no transformation. In practice, during construction processes, a wider range of changes and deformations beyond these three categories are exhibited.

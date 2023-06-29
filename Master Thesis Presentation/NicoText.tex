@@ -1,0 +1,46 @@
+\section{Deep Learning}
+ARTIFICIAL NEURAL NETWORK
+First, I will briefly explain the basics of artificial neural networks. They are inspired by the structure and function of biological brains. They consist of neurons that are linked together, organized into layers (like on the graph on the left). Each neuron can be activated to produce an output signal. They do that by receiving inputs and processing them, typically via a weighted sum followed by an activation function. The network can learn by adjusting the weights on each link based on the difference between a predicted output and the ground truth.
+
+OUR NETWORK
+Here is a brief overview of our proposed network which consists of 2 sub-networks (PointNet++ or PointNet2 and FlownNet3D). I will first explain PointNet and then FlowNet3D.
+
+POINTNET
+PointNet is a deep learning architecture designed to process point clouds to classify or segment it. To understand why we need a specificly-designed network to work with point clouds, we need to take into account two important properties for representing a geometric structure with point clouds. 
+
+JOINT ALIGNMENT NETWORK (T-NET)
+The first one is that a point cloud can be represented everywhere in the space. What I mean by that is that a point cloud representing the same object can be translated and rotated however you want and it will still represent the same object. So to avoid having different results for the same objects and to achieve what is called invariance under transformation you need to project your point cloud into a canonical space (a space where the same objects share the same coordinates). PointNet achieves this by computing via another sub-network called the Joint Alignement Network or T(ransformation)-Net, a transformation matrix that it applies to the point cloud.\\
+This idea can also be applied after feature extraction (done via a basic network called MultiLayerPerceptron), to better align features of similar objects. Just like a table and a bureau. This helps the network learns faster.
+
+POINTNET OUTPUT
+The other property of a point cloud is that it's a list of unordered points. So to mitigate this property PointNet applies a max pooling, which consists of selecting the max value for each feature. This gives us a list of feature supposedly independent of the order of the input. For classification purposes this global feature suffices and you can just apply another MLP. But for segmentation you want per-point scores. So PointNet concatenates point features computed earlier and the global feature such that the network incorporate both local and global information for segmentation.
+
+POINTNET++
+PointNet++ or PointNet2 is an enhanced version PointNet. PointNet's biggest drawback is the way it takes local information into account by computing features that depend on the whole point cloud for each point. PointNet2 improves this aspect by applying PointNet in a hierarchical and structured manner. Structured because it makes sub-groups in the point cloud and applies PointNet to each group to compute the global feature of this group. And hierarchical because the network can do it multiple times represented on the graph by the colours. Just like PointNet, the classification is easily designed but for the segmentation you need to retrieve the points and for each level of abstraction, PointNet2 interpolates the features of the closest points int the previous level.
+
+OUR NETWORK
+So that's the how the right part of our network works, as you can see PointNet2 takes an input point cloud but also the output of FlowNet3D as an additional feature which is called a flow.
+
+FLOWNET3D
+So what's a flow ? A flow describes the motion between two point clouds. It's a list of vectors attributed to a point cloud source (in red on the graph). And if we add the point cloud source and the flow together we get a representation of the point cloud target. So it's like the difference between two point cloud.\\
+FLOWNET3D
+Now how does FlowNet3D computes the flow ? I couldn't explain FlowNet3D before PointNet2 because it uses the same architecture on the left and right part of its network. That is the hierarchical and structured application of PointNet. The new design concept here is the embedding layer in the middle.
+
+FLOWNET3D: FLOW EMBEDDING
+This is the part of the network that combines information between the two input point clouds. So at this point we have local features for both point clouds. The flow features or embedding are computed for each point of the point cloud source by voting for the best near-by flows while taking into account features of both cloud.\\
+Other conv layers like in PointNet2 are applied. This helps resolve ambiguous cases like points on the surface of a translating table.
+
+OUR NETWORK
+And now you have a basic understanding of our network. That computes a classification or a segmentation of 2 point clouds via the computation of their flow.
+
+
+\section{Results}
+DISCUSSION
+3 key observations can be made here. One is that with theoretical flows, our network performs better than the classical approach. But when we use the flows computed with FLowNet3D the results aren't as satisfactory. And we firmly believe that the computed flows can be better if FlowNet3D is trained on a more suited dataset or they even exist newer supposedly better networks with the same purpose as FlowNet3D. And finally a recurrent theme is that the rotation class seems to be the hardest one to predict. But in the case of the theoretical flows it might be partially explained if we visualise the results.
+
+THEORETICAL FLOWS VISUALISATION
+So here is a segmentation of a room. The green represents a translated wall, the red represents a rotation, and the grey represents a wall that undergoes no transformation.\\
+The point cloud above is the desired result and below is a prediction of our network. You can see a line in the middle of the wall that underwent a rotation. This is actually near the axis of rotation. We believe this is incorrectly segmented because the flow around the axis of rotation is zero. So in a sense, the network is right because these points on the wall didn't move from one point cloud to another and it's just a labelling ambiguity. So that might partially explain our final results.
+
+CONCLUSION
+So to conclude, our objective was to be able to detect changes between 2 point clouds. We did that using 2 different approaches, classical and deep learning, and by limiting ourselves to predicting 3 classes. Our proposed neural network is the most promising model due to its results with theoretical flows. But with the flow computed with FlowNet3D the classical approach performs better. However we believe the computation of the flow can be further improved. Also, the dataset could be more realistically generated. The number of classes can be augmented with like deformation, missing walls or any other change that might be pertinent for the construction industry.

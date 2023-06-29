@@ -1,0 +1,52 @@
+Slide 1 - 2 :
+Hello everybody, thank you for attending our master thesis presentation about ‘3D change detection to monitor construction site’.
+First, we are going to give some context and introduce the aim of our thesis. Afterward, 2 approaches are presented for reaching our goals. Finally, we will show the results and conclude the presentation.
+Slide 4:
+Current research allows robots to become increasingly autonomous. For example, Boston Dynamic’s SPOT equipped with Lidar and SLAM can navigate autonomously and map a record of its surrounding environment.
+Theses progress allows novel applications and such as monitoring construction sites to detect changes and faults, which can alleviate some workers’ workload.
+The objective of our thesis is to investigate the feasibility for this subject and proposes approaches.
+
+Slide 5:
+While investigating, we found two different approaches:
+-	A classical one that uses mainly classical computer vision techniques. It takes both point clouds as input, and through a series of algorithms, we classify or segment different faults.
+-	A deep learning one, which takes benefit of recent progress. It also takes both point clouds as input. However, this time, the classification and segmentation are done through 2 networks.
+We also notice that for both approaches, we need to register the point clouds.
+
+Slide 6:
+The task of registering the point cloud consists of finding a transformation matrix that aligns both of them.  It can be done using pre-built functions from open3D. 
+On the left, we have a point cloud in blue and one in yellow. Using iterative methods such as RANSAC for global alignment and ICP for refinement, we obtain the result on the right after alignment.
+Slide 8:
+Let’s dive more into the classical approach pipeline. Once both are aligned, we would like to detect planes. A reason to detect planes is because buildings are mainly composed of walls which are often planar.
+A way to do so, is to use a RANSAC based algorithm. The outline of the algorithm is as follows:
+-	We select 3 random points and fit a candidate plane
+-	Then, we determine the number of inliers to that plane
+-	Finally, we choose a candidate plane with the most inliers.
+Slide 9:
+Then, we need to match planes corresponding planes from the different point cloud and detect changes or faults. 
+2 planes are matched together if they are close to each other, meaning their centroids are close. And they should be most aligned.
+To detect faults, which are respectively translation, rotation and no changes, we also rely on the alignment of their normal and the closeness of their centroids.
+-	A translation happen, if their centroid are far away but their normal are aligned.
+-	There is no change if both their normal and centroid are aligned and close
+-	Otherwise, it is a rotation.
+
+Slide23: Results:
+Since there is no public available dataset where building contain faults, we decided to generate one. There is one for classification purposes, containing only planes and one for segmentation, containing rooms as illustrated in the slide.
+A room is modelled as a rectangular cuboid where each of its planar surface, representing walls, can have a transformation: translation , rotation, no change/ base. Moreover we add a noise to represent measurements noise of the LiDAR used.
+
+Slide 24:
+To evaluate our approaches for segmentation, we used 2 metrics. Accuracy metric which represent the fraction that the model correctly predicted.
+Another widely used metric is IoU, which is the intersection of overlapping regions between prediction and ground truth, over their union.
+For indication, here above you have some IoU values and their visual representation.
+
+Slide 25:
+We trained our model on the artificial dataset. However due to a lack of time and ressources, we did not have time to successfully train the flownet3d. 
+This is a reason why we decided to produce 2 results:
+-	We used pre-computed flows to gives us a representative upper bound of the approach
+-	We used a pretrained flownet3d to gives a lower bound.
+Those results are then compared with the classical model on both metrics.
+
+
+
+
+
+
